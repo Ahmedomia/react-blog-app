@@ -7,51 +7,40 @@ export default function GoogleLoginButton() {
   const setUser = useUserStore((state) => state.setUser);
 
   const login = useGoogleLogin({
-    onSuccess: (tokenResponse) => {
-      fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
-        headers: {
-          Authorization: `Bearer ${tokenResponse.access_token}`,
-        },
-      })
-        .then((res) => res.json())
-        .then((data) => {
-          const userData = {
-            fullName: data.name,
-            email: data.email,
-            profilePic: data.picture,
-          };
-
-          setUser(userData);
-
-          const existingUsers = JSON.parse(localStorage.getItem("users")) || [];
-          const alreadyExists = existingUsers.some(
-            (user) => user.email === userData.email
-          );
-
-          if (!alreadyExists) {
-            existingUsers.push(userData);
-            localStorage.setItem("users", JSON.stringify(existingUsers));
-          }
-
-          navigate("/mainpage");
-        })
-        .catch((err) => {
-          console.error("Google User Info fetch error:", err);
+    flow: "auth-code",
+    onSuccess: async (codeResponse) => {
+      try {
+        const res = await fetch("http://localhost:5000/api/auth/google-login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ code: codeResponse.code }),
         });
+
+        const result = await res.json();
+
+        if (res.ok) {
+          localStorage.setItem("token", result.token);
+          setUser(result.user);
+          navigate("/mainpage");
+        } else {
+          console.error("Backend Google login error:", result);
+        }
+      } catch (err) {
+        console.error("Google login flow failed:", err);
+      }
     },
-    onError: (error) => {
-      console.error("Login Failed:", error);
+    onError: () => {
+      console.error("Google Login Failed");
     },
   });
 
   return (
-    <button
-      type="button"
+    <div
       onClick={() => login()}
       className="w-full border border-gray-300 py-2 rounded-xl flex items-center justify-center gap-2 hover:bg-gray-100 transition cursor-pointer"
     >
       <img src="/assets/Social Icons.svg" alt="Google" className="w-5 h-5" />
-      <span className="text-sm text-black/80">Continue with Google</span>
-    </button>
+      <span>Sign in using Google</span>
+    </div>
   );
 }

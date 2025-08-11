@@ -34,26 +34,36 @@ export default function AddForm({ isOpen, onClose, onAdd }) {
     };
   }, [isOpen, onClose]);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    if (title.trim() && category.trim() && content.trim()) {
-      if (!user) return alert("No user logged in!");
+    if (!user) return alert("No user logged in!");
+    if (!title.trim() || !category.trim() || !content.trim()) return;
 
-      onAdd({
+
+    try {
+      
+      const blogData = {
         title,
         category,
         content,
         image,
         authorName: user.name,
         authorEmail: user.email,
-        authorPic: user.profilePic || "",
-      });
+        authorpic: user.profilepic || "",
+      };
+
+      await onAdd(blogData);
+
       setTitle("");
       setCategory("");
       setContent("");
       setImage(null);
+
       onClose();
+    } catch (error) {
+      console.error("Failed to post blog:", error);
     }
+
   };
 
   const handleImageChange = (e) => {

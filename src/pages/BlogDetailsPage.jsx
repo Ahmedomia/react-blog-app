@@ -3,8 +3,13 @@ import { useParams, useNavigate } from "react-router-dom";
 import { FaArrowLeft } from "react-icons/fa";
 import { useUserStore } from "../store/userStore";
 import { useBlogStore } from "../store/blogStore";
-import { format } from "date-fns";
+import { format, parseISO, isValid } from "date-fns";
 import ProfileButton from "../components/ProfileButton";
+import { SyncLoader } from "react-spinners";
+
+import axios from "axios";
+
+const API_BASE = "http://localhost:5000/api";
 
 export default function BlogDetailsPage() {
   const { id } = useParams();
@@ -18,6 +23,8 @@ export default function BlogDetailsPage() {
   const [comments, setComments] = useState([]);
   const [expandedComments, setExpandedComments] = useState([]);
   const { user: loggedInUser } = useUserStore();
+  const [userMap, setUserMap] = useState({});
+  const [loading, setLoading] = useState(true);
 
   const toggleComment = (index) => {
     setExpandedComments((prev) =>
@@ -32,60 +39,111 @@ export default function BlogDetailsPage() {
   });
 
   const fileInputRef = useRef(null);
-  const isAuthor = currentUser && blog?.authorEmail === currentUser.email;
+  const isAuthor =
+    blog &&
+    currentUser &&
+    (blog.authorid === currentUser.id ||
+      blog.authoremail === currentUser.email);
 
   useEffect(() => {
-    const storedComments = JSON.parse(localStorage.getItem("comments")) || {};
-    const loaded = storedComments[id] || [];
-    setComments(Array.isArray(loaded) ? loaded : []);
-  }, [id]);
-
-  const handlePostComment = () => {
-    if (newComment.trim() === "") return;
-
-    const newCommentObj = {
-      text: newComment.trim(),
-      author: loggedInUser?.name || "Anonymous",
-      authorPic: loggedInUser?.profilePic || null,
+    const fetchComments = async () => {
+      try {
+        const res = await fetch(`http://localhost:5000/api/comments/${id}`);
+        const data = await res.json();
+        if (!Array.isArray(data)) {
+          console.error("Invalid response for comments:", data);
+          setComments([]);
+          return;
+        }
+        setComments(data);
+      } catch (err) {
+        console.error("Error fetching comments:", err);
+        setComments([]);
+      }
     };
 
-    const updatedComments = [...comments, newCommentObj];
-    setComments(updatedComments);
+    fetchComments();
+  }, [id]);
 
-    const storedComments = JSON.parse(localStorage.getItem("comments")) || {};
-    storedComments[id] = updatedComments;
-    localStorage.setItem("comments", JSON.stringify(storedComments));
+  useEffect(() => {
+    const fetchUsers = async () => {
+      try {
+        const res = await axios.get(`${API_BASE}/users`);
 
-    setNewComment("");
+        const users = Array.isArray(res.data) ? res.data : res.data.users;
+
+        if (!Array.isArray(users)) {
+          console.error("Users response is not an array:", users);
+          return;
+        }
+
+        const newUserMap = {};
+        users.forEach((user) => {
+          newUserMap[user.id] = {
+            name: user.name,
+            profilepic: user.profilepic,
+          };
+        });
+
+        setUserMap(newUserMap);
+      } catch (err) {
+        console.error("Failed to fetch users:", err);
+      }
+    };
+
+    fetchUsers();
+  }, []);
+
+  const handlePostComment = async () => {
+    if (newComment.trim() === "") return;
+
+    try {
+      await fetch(`http://localhost:5000/api/comments/${id}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          text: newComment.trim(),
+          userId: loggedInUser?.id,
+        }),
+      });
+
+      setNewComment("");
+      const res = await fetch(`http://localhost:5000/api/comments/${id}`);
+      const updated = await res.json();
+      setComments(updated);
+    } catch (err) {
+      console.error("Failed to post comment:", err);
+    }
   };
 
   useEffect(() => {
-    const allBlogs = JSON.parse(localStorage.getItem("blogs")) || [];
-    const numericId = Number(id);
-    const foundBlog = allBlogs.find((b) => b.id === numericId);
+    const fetchBlog = async () => {
+      try {
+        const response = await fetch(`http://localhost:5000/api/blogs/${id}`);
+        if (!response.ok) throw new Error("Failed to fetch blog");
 
-    if (foundBlog) {
-      const isAuthor =
-        foundBlog.authorEmail && loggedInUser?.email === foundBlog.authorEmail;
+        const data = await response.json();
+        const updatedBlog = {
+          ...data,
+          author: data.author || "Unknown",
+          authorpic: data.authorpic || "",
+        };
 
-      const updatedBlog = {
-        ...foundBlog,
-        ...(isAuthor && {
-          author: loggedInUser.name,
-          authorPic: loggedInUser.profilePic,
-        }),
-      };
+        setBlog(updatedBlog);
+        setEditedBlog({
+          title: updatedBlog.title,
+          content: updatedBlog.content,
+          image: updatedBlog.image || "",
+        });
+      } catch (err) {
+        console.error("Error fetching blog:", err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
 
-      setBlog(updatedBlog);
-      setEditedBlog({
-        title: updatedBlog.title,
-        content: updatedBlog.content,
-        image: updatedBlog.image || "",
-      });
-    } else {
-      console.warn(`No blog found in localStorage for id: ${id}`);
-    }
-  }, [id, loggedInUser]);
+    fetchBlog();
+  }, [id]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -94,27 +152,69 @@ export default function BlogDetailsPage() {
 
   const handleEditClick = () => setIsEditing(true);
 
-  const handleSave = () => {
-    const updated = {
-      ...blog,
-      ...editedBlog,
-      updatedAt: new Date().toISOString(),
-    };
+  const handleSave = async () => {
+    try {
+      const token = localStorage.getItem("token");
 
-    const updatedBlogs = blogs.map((b) => (b.id === updated.id ? updated : b));
+      const updated = {
+        ...blog,
+        ...editedBlog,
+        updatedAt: new Date().toISOString(),
+      };
 
-    setBlogs(updatedBlogs);
-    localStorage.setItem("blogs", JSON.stringify(updatedBlogs));
-    setBlog(updated);
-    setIsEditing(false);
+      const response = await fetch(
+        `http://localhost:5000/api/blogs/${updated.id}`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify(updated),
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to update blog");
+      }
+
+      const updatedBlog = await response.json();
+
+      const updatedBlogs = blogs.map((b) =>
+        b.id === updatedBlog.id ? updatedBlog : b
+      );
+      setBlogs(updatedBlogs);
+      setBlog(updatedBlog);
+      setIsEditing(false);
+    } catch (err) {
+      console.error("Error updating blog:", err);
+    }
   };
 
-  const handleDelete = () => {
-    const allBlogs = JSON.parse(localStorage.getItem("blogs")) || [];
-    const updatedBlogs = allBlogs.filter((b) => b.id !== blog.id);
-    localStorage.setItem("blogs", JSON.stringify(updatedBlogs));
-    setBlogs(updatedBlogs);
-    navigate("/mainpage");
+  const handleDelete = async () => {
+    const token = localStorage.getItem("token");
+
+    try {
+      const response = await fetch(
+        `http://localhost:5000/api/blogs/${blog.id}`,
+        {
+          method: "DELETE",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to delete blog");
+      }
+
+      setBlogs(blogs.filter((b) => b.id !== blog.id));
+
+      navigate("/mainpage");
+    } catch (err) {
+      console.error("Error deleting blog:", err);
+    }
   };
 
   const handleBack = () => {
@@ -139,9 +239,12 @@ export default function BlogDetailsPage() {
     reader.readAsDataURL(file);
   };
 
-  if (!blog) {
+  if (loading) {
     return (
-      <div className="text-center mt-20 text-gray-500">Loading blog...</div>
+      <div className="flex flex-col items-center justify-center min-h-screen bg-[#f8f6ff]">
+        <SyncLoader color="#6840c6" size={12} />
+        <p className="text-lg text-[#6840c6] mt-4">Loading blog...</p>
+      </div>
     );
   }
 
@@ -172,17 +275,17 @@ export default function BlogDetailsPage() {
               className="w-full border-none focus:border-none focus:outline-none focus:ring-0 rounded text-center text-3xl font-bold"
             />
           ) : (
-            <h1 className="text-3xl font-bold mt-4 text-center">
+            <h1 className="text-3xl font-bold mt-4 text-center cursor-default">
               {blog.title}
             </h1>
           )}
 
           <div className="flex items-center gap-x-4">
-            {blog.authorPic ? (
+            {blog.authorpic ? (
               <img
-                src={blog.authorPic}
+                src={blog.authorpic}
                 alt={blog.author}
-                className="w-16 h-16 rounded-full object-cover"
+                className="w-16 h-16 rounded-full object-cover "
               />
             ) : (
               <div className="w-16 h-16 rounded-full bg-gray-300 flex items-center justify-center">
@@ -191,12 +294,16 @@ export default function BlogDetailsPage() {
                 </p>
               </div>
             )}
-            <h1 className="text-lg font-semibold">{blog.author}</h1>
+            <h1 className="text-lg font-semibold cursor-default">
+              {blog.author}
+            </h1>
 
             <div className="h-4 border-l border-gray-300" />
-            <p className="text-sm text-gray-500">
-              {format(new Date(blog.date), "dd MMM yyyy")}
-            </p>
+            <span className="text-xs text-gray-400 cursor-default">
+              {blog.createdat && isValid(parseISO(blog.createdat))
+                ? format(parseISO(blog.createdat), "dd MMM yyyy")
+                : "Unknown date"}
+            </span>
             {isAuthor && !isEditing && (
               <div className="flex gap-2 ml-auto">
                 <button
@@ -238,7 +345,9 @@ export default function BlogDetailsPage() {
             <img
               src={editedBlog.image}
               alt="Blog"
-              className="w-full h-auto max-h-[400px] object-cover cursor-pointer"
+              className={`w-full h-auto max-h-[400px] object-cover ${
+                isEditing ? "cursor-pointer" : "cursor-default"
+              }`}
               onClick={isEditing ? handleImageClick : undefined}
             />
           )}
@@ -269,18 +378,20 @@ export default function BlogDetailsPage() {
               </div>
             </>
           ) : (
-            <p className="text-lg leading-relaxed whitespace-pre-wrap text-center">
+            <p className="text-lg break-words break-all leading-relaxed whitespace-pre-wrap text-center cursor-default">
               {blog.content}
             </p>
           )}
-          <div className="mt-10 border-t pt-6">
-            <h2 className="text-xl font-semibold mb-4">Comments</h2>
+          <div className="mt-10 border-t pt-6 text-gray-400">
+            <h2 className="text-xl font-semibold mb-4 cursor-default">
+              Comments
+            </h2>
 
             <div className="flex items-start gap-4 mb-4">
-              {loggedInUser.profilePic ? (
+              {loggedInUser?.profilepic ? (
                 <img
-                  src={loggedInUser.profilePic}
-                  alt={loggedInUser.name || "User"}
+                  src={loggedInUser.profilepic}
+                  alt={loggedInUser?.name || "User"}
                   className="w-12 h-12 rounded-full object-cover"
                   onError={(e) => {
                     e.target.onerror = null;
@@ -290,7 +401,7 @@ export default function BlogDetailsPage() {
               ) : (
                 <div className="w-12 h-12 rounded-full bg-gray-300 flex items-center justify-center">
                   <p className="text-gray-500 text-2xl font-bold cursor-default">
-                    {loggedInUser.name?.charAt(0) || "?"}
+                    {loggedInUser?.name?.charAt(0) || "?"}
                   </p>
                 </div>
               )}
@@ -313,55 +424,62 @@ export default function BlogDetailsPage() {
             </div>
 
             <div className="space-y-4">
-              {comments.map((comment, index) => (
-                <div
-                  key={index}
-                  className="flex gap-4 items-start bg-gray-100 p-3 rounded"
-                >
-                  {loggedInUser.profilePic ? (
-                    <img
-                      src={loggedInUser.profilePic}
-                      alt={loggedInUser.author || "User"}
-                      className="w-10 h-10 rounded-full object-cover"
-                      onError={(e) => {
-                        e.target.onerror = null;
-                        e.target.style.display = "none";
-                      }}
-                    />
-                  ) : (
-                    <div className="w-10 h-10 rounded-full bg-gray-300 flex items-center justify-center">
-                      <p className="text-gray-500 text-2xl font-bold cursor-default">
-                        {comment.author?.charAt(0) || "?"}
-                      </p>
-                    </div>
-                  )}
-                  <div>
-                    <p className="text-sm font-semibold">
-                      {comment.author || "Anonymous"}
-                    </p>
-                    <p
-                      className={`text-sm mt-1 ${
-                        expandedComments.includes(index)
-                          ? ""
-                          : "line-clamp-3 overflow-hidden"
-                      }`}
-                    >
-                      {comment.text}
-                    </p>
+              {Array.isArray(comments) &&
+                comments.map((comment, index) => {
+                  const user = userMap[comment.userId];
+                  const profilepic = user?.profilepic;
+                  const authorName = user?.name || "Anonymous";
+                  const authorInitial = authorName.charAt(0).toUpperCase();
 
-                    {comment.text.length > 120 && (
-                      <button
-                        onClick={() => toggleComment(index)}
-                        className="text-xs text-gray-500 mt-1 hover:underline"
-                      >
-                        {expandedComments.includes(index)
-                          ? "Show less"
-                          : "Read more"}
-                      </button>
-                    )}
-                  </div>
-                </div>
-              ))}
+                  return (
+                    <div
+                      key={index}
+                      className="flex gap-4 items-start cursor-default p-3 rounded"
+                    >
+                      {profilepic ? (
+                        <img
+                          src={profilepic}
+                          alt={authorName}
+                          className="w-10 h-10 rounded-full object-cover"
+                          onError={(e) => {
+                            e.target.onerror = null;
+                            e.target.style.display = "none";
+                          }}
+                        />
+                      ) : (
+                        <div className="w-10 h-10 rounded-full bg-gray-300 flex items-center justify-center">
+                          <p className="text-gray-500 text-xl font-bold">
+                            {authorInitial}
+                          </p>
+                        </div>
+                      )}
+
+                      <div>
+                        <p className="text-sm font-semibold">{authorName}</p>
+                        <p
+                          className={`text-sm mt-1 break-words break-all ${
+                            expandedComments.includes(index)
+                              ? ""
+                              : "line-clamp-3 overflow-hidden"
+                          }`}
+                        >
+                          {comment.text}
+                        </p>
+
+                        {comment.text.length > 120 && (
+                          <button
+                            onClick={() => toggleComment(index)}
+                            className="text-xs text-gray-500 mt-1 hover:underline"
+                          >
+                            {expandedComments.includes(index)
+                              ? "Show less"
+                              : "Read more"}
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
             </div>
           </div>
         </div>

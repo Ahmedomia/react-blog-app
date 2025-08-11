@@ -4,25 +4,26 @@ import LogOutButton from "../components/LogOutButton";
 import { useUserStore } from "../store/userStore";
 import { useBlogStore } from "../store/blogStore";
 
-export default function ProfileForm({ onClose }) {
+export default function ProfileForm({ onClose, onSave }) {
   const { user: globalUser, setUser } = useUserStore();
   const { updateUserInUsers } = useBlogStore();
 
   const [name, setName] = useState(globalUser?.name || "");
   const [email, setEmail] = useState(globalUser?.email || "");
   const [password, setPassword] = useState("");
-  const [profilePic, setProfilePic] = useState(globalUser?.profilePic || "");
+  const [profilepic, setprofilepic] = useState(globalUser?.profilepic || "");
   const [isEditing, setIsEditing] = useState(false);
 
   const fileInputRef = useRef(null);
   const formRef = useRef(null);
 
   useEffect(() => {
-    setName(globalUser?.name || "");
-    setEmail(globalUser?.email || "");
-    setPassword("");
-    setProfilePic(globalUser?.profilePic || "");
-  }, [globalUser]);
+    if (globalUser) {
+      setName(globalUser.name || "");
+      setEmail(globalUser.email || "");
+      setprofilepic(globalUser.profilepic || "");
+    }
+  }, []);
 
   useEffect(() => {
     const handleClickOutside = (e) => {
@@ -38,23 +39,53 @@ export default function ProfileForm({ onClose }) {
     const file = e.target.files[0];
     if (file) {
       const reader = new FileReader();
-      reader.onloadend = () => setProfilePic(reader.result);
+      reader.onloadend = () => setprofilepic(reader.result);
       reader.readAsDataURL(file);
     }
     e.target.value = null;
   };
 
-  const handleSaveClick = () => {
-    const updatedUser = {
-      name,
-      email,
-      profilePic,
-      ...(password && { password }),
-    };
-    setUser(updatedUser);
-    updateUserInUsers(updatedUser);
-    setIsEditing(false);
-    onClose();
+  const handleSaveClick = async () => {
+    if (!globalUser?.id) {
+      console.error("User ID is missing. Cannot update.");
+      return;
+    }
+
+    try {
+      const token = localStorage.getItem("token");
+      const updatedUser = {
+        name,
+        email,
+        profilepic,
+        ...(password && { password }),
+      };
+
+      const res = await fetch(
+        `http://localhost:5000/api/auth/users/${globalUser.id}`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify(updatedUser),
+        }
+      );
+
+      if (!res.ok) {
+        throw new Error("Failed to update profile");
+      }
+
+      const data = await res.json();
+      const oldEmail = globalUser.email;
+      setUser(data);
+      updateUserInUsers(data);
+      setIsEditing(false);
+      onSave(data, oldEmail);
+      onClose();
+    } catch (err) {
+      console.error("Update error:", err.message);
+    }
   };
 
   return (
@@ -77,9 +108,9 @@ export default function ProfileForm({ onClose }) {
             }`}
             onClick={() => isEditing && fileInputRef.current.click()}
           >
-            {profilePic ? (
+            {profilepic ? (
               <img
-                src={profilePic}
+                src={profilepic}
                 alt="profile"
                 className="w-full h-full object-cover"
               />

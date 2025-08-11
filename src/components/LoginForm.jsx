@@ -12,7 +12,7 @@ export default function LoginForm() {
 
   const navigate = useNavigate();
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
 
     const newErrors = {};
@@ -20,25 +20,32 @@ export default function LoginForm() {
     if (password.trim() === "") newErrors.password = "Password is required";
     setErrors(newErrors);
 
-    if (Object.keys(newErrors).length === 0) {
-      const users = JSON.parse(localStorage.getItem("users")) || [];
+    if (Object.keys(newErrors).length > 0) return;
 
-      const foundUser = users.find(
-        (user) => user.email === email && user.password === password
-      );
+    try {
+      const res = await fetch("http://localhost:5000/api/auth/login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ email, password }),
+      });
 
-      if (!foundUser) {
-        setErrors({ password: "Invalid email or password" });
+      const data = await res.json();
+
+      if (!res.ok) {
+        setErrors({ password: data.message || "Email or Password is invalid" });
         return;
       }
-
-      setUser(foundUser);
-      localStorage.setItem("loggedInUser", JSON.stringify(foundUser));
-      console.log("Login success:", foundUser);
-
+      localStorage.setItem("token", data.token);
+      setUser(data.user);
       navigate("/mainpage");
+    } catch (err) {
+      console.error("Login error:", err);
+      setErrors({ password: "Something went wrong. Try again later." });
     }
   };
+
 
   return (
     <div className="max-w-md w-full">

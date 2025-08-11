@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { FaUserCircle } from "react-icons/fa";
 import AddButton from "../components/AddButton";
 import AddForm from "../components/AddForm";
@@ -7,86 +7,151 @@ import ProfileButton from "../components/ProfileButton";
 import ProfileForm from "../components/ProfileForm";
 import { useUserStore } from "../store/userStore";
 import { useBlogStore } from "../store/blogStore";
-import { format } from "date-fns";
+import { format, parseISO, isValid } from "date-fns";
+import { SyncLoader } from "react-spinners";
+
+import axios from "axios";
+
+const API_BASE = "http://localhost:5000/api";
 
 export default function MainPage() {
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
+  const [savedScroll, setSavedScroll] = useState(null);
+  const navigate = useNavigate();
 
   const { user: loggedInUser, setUser } = useUserStore();
-  const updateBlogs = useBlogStore((state) => state.setBlogs);
-  const { blogs, setBlogs } = useBlogStore();
+  const {
+    blogs,
+    setBlogs,
+    appendBlogs,
+    page,
+    setPage,
+    hasMore,
+    setHasMore,
+    loading,
+    setLoading,
+  } = useBlogStore();
+
+  const token = localStorage.getItem("token");
+  const [categoryFilter, setCategoryFilter] = useState("all");
+  const BLOGS_PER_PAGE = 3;
+
+  const handleBlogClick = (id) => {
+    sessionStorage.setItem("scrollPosition", window.scrollY);
+    navigate(`/blog/${id}`);
+  };
 
   useEffect(() => {
-    const stored = localStorage.getItem("blogs");
-    if (stored) {
-      try {
-        updateBlogs(JSON.parse(stored));
-      } catch {
-        console.warn("Invalid blogs format");
-      }
+    const savedPos = sessionStorage.getItem("scrollPosition");
+    if (savedPos) {
+      window.scrollTo(0, parseInt(savedPos, 10));
+      sessionStorage.removeItem("scrollPosition");
     }
-  }, [updateBlogs]);
+  }, []);
 
   useEffect(() => {
-    if (blogs.length > 0) {
-      localStorage.setItem("blogs", JSON.stringify(blogs));
+    const fetchBlogs = async () => {
+      setLoading(true);
+      try {
+        const res = await axios.get(`${API_BASE}/blogs`, {
+          headers: { Authorization: `Bearer ${token}` },
+          params: {
+            limit: BLOGS_PER_PAGE,
+            offset: page * BLOGS_PER_PAGE,
+          },
+        });
+        console.log("Fetching blogs:", {
+          page: page,
+          limit: BLOGS_PER_PAGE,
+          offset: page * BLOGS_PER_PAGE,
+        });
+
+        const newBlogs = res.data;
+
+        if (page === 0) {
+          setBlogs(res.data);
+        } else {
+          appendBlogs(res.data);
+        }
+
+        setHasMore(newBlogs.length === BLOGS_PER_PAGE);
+      } catch (err) {
+        console.error("Fetch blogs error:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchBlogs();
+  }, [page, token, setBlogs, appendBlogs, setHasMore, setLoading]);
+
+  const handleLoadMore = () => {
+    if (!loading && hasMore) {
+      setSavedScroll(window.scrollY);
+      setPage((prev) => prev + 1);
+    }
+  };
+
+  useEffect(() => {
+    if (savedScroll !== null) {
+      window.scrollTo(0, savedScroll);
+      setSavedScroll(null);
     }
   }, [blogs]);
 
-  useEffect(() => {
-    if (!loggedInUser) return;
+  const categories = Array.from(
+    new Set(
+      (Array.isArray(blogs) ? blogs : [])
+        .map((blog) => blog.category)
+        .filter(Boolean)
+    )
+  );
 
-    const allBlogs = JSON.parse(localStorage.getItem("blogs")) || [];
-    let updated = false;
-
-    const updatedBlogs = allBlogs.map((blog) => {
-      if (blog.authorEmail === loggedInUser.email) {
-        updated = true;
-        return {
-          ...blog,
-          author: loggedInUser.name,
-          authorPic: loggedInUser.profilePic,
-        };
-      }
-      return blog;
-    });
-
-    if (updated) {
-      localStorage.setItem("blogs", JSON.stringify(updatedBlogs));
-      setBlogs(updatedBlogs);
+  const handleAddBlog = async (newBlog) => {
+    try {
+      const res = await axios.post(`${API_BASE}/blogs`, newBlog, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      console.log("New blog added:", res.data);
+      setBlogs([res.data, ...blogs]);
+      setSearchTerm("");
+      setCategoryFilter("all");
+    } catch (err) {
+      console.error("Add blog error:", err);
     }
-  }, [loggedInUser, setBlogs]);
-
-  const getNextId = () => {
-    const ids = blogs.map((b) => b.id);
-    return ids.length === 0 ? 1 : Math.max(...ids) + 1;
   };
 
-  const handleAddBlog = (newBlog) => {
-    const currentUser = loggedInUser || {};
-
-    const blogWithMeta = {
-      ...newBlog,
-      id: getNextId(),
-      author: currentUser.fullName || currentUser.name || "Anonymous",
-      authorPic: currentUser.profilePic || "",
-      authorEmail: currentUser.email || "",
-      date: new Date().toLocaleDateString(),
-    };
-
-    updateBlogs([...blogs, blogWithMeta]);
-  };
-
-  const filteredBlogs = blogs.filter((blog) => {
+  const filteredBlogs = (Array.isArray(blogs) ? blogs : []).filter((blog) => {
     const cat = blog.category || "";
-    return (
-      blog.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      blog.content.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      cat.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    const matchesSearch =
+      blog.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      blog.content?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      cat.toLowerCase().includes(searchTerm.toLowerCase());
+
+    const matchesCategory =
+      !categoryFilter || categoryFilter === "all" || cat === categoryFilter;
+
+    return matchesSearch && matchesCategory;
   });
+
+  const handleProfileSave = async (updatedUser) => {
+    try {
+      console.log("Profile save triggered with:", updatedUser);
+      setUser(updatedUser);
+      setBlogs((prevBlogs) =>
+        prevBlogs.map((blog) =>
+          blog.author === updatedUser.username
+            ? { ...blog, authorpic: updatedUser.profilePic }
+            : blog
+        )
+      );
+      setIsProfileOpen(false);
+    } catch (err) {
+      console.error("Update profile error:", err);
+    }
+  };
 
   return (
     <div
@@ -102,13 +167,12 @@ export default function MainPage() {
           <span className="md:mr-2">Resources and</span>
           <span>insights</span>
         </h1>
-
         <p className="text-[#6840c6] mt-6 text-center cursor-default flex flex-col md:flex-row md:justify-center md:items-center">
           <span className="md:mr-2">The latest industry news, interviews,</span>
           <span>technologies, and resources.</span>
         </p>
 
-        <div className="mt-8 w-full flex justify-center pb-12">
+        <div className="mt-8 w-full flex justify-center pb-12 gap-2">
           <div className="relative w-64 md:w-72">
             <img
               src="/assets/search.svg"
@@ -123,11 +187,37 @@ export default function MainPage() {
               className="w-full border border-gray-300 rounded-lg pl-10 py-2 focus:outline-none focus:ring focus:ring-[#6e6cdf]/40"
             />
           </div>
+          <select
+            value={categoryFilter}
+            onChange={(e) => setCategoryFilter(e.target.value)}
+            className="border border-gray-300 rounded-lg py-2 px-3 focus:outline-none focus:ring focus:ring-[#6e6cdf]/40"
+          >
+            <option
+              value="all"
+              style={{
+                color: "#6e6cdf",
+                backgroundColor: "#f8f6ff",
+                fontWeight: "600",
+              }}
+            >
+              All Categories
+            </option>
+            {categories.map((cat) => (
+              <option key={cat} value={cat}>
+                {cat}
+              </option>
+            ))}
+          </select>
         </div>
       </div>
 
       <div className="max-w-6xl mx-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mt-6">
-        {filteredBlogs.length === 0 ? (
+        {loading ? (
+          <div className="col-span-full flex flex-col items-center py-12">
+            <SyncLoader color="#6e6cdf" size={12} loading={loading} />
+            <p className="text-lg text-[#6840c6] mt-4">Loading blogs...</p>
+          </div>
+        ) : filteredBlogs.length === 0 ? (
           <div className="col-span-full text-center py-6">
             <p className="text-gray-500 text-lg mb-4 cursor-default">
               No matching blogs found
@@ -139,16 +229,20 @@ export default function MainPage() {
             />
           </div>
         ) : (
-          filteredBlogs.map((blog) => (
-            <Link key={blog.id} to={`/blog/${blog.id}`}>
-              <div className="m-2 mt-8 w-[350px] h-[550px] bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-all transform hover:scale-110 active:scale-95">
+          filteredBlogs.map((blog) => {
+            return (
+              <div
+                key={blog.id}
+                onClick={() => handleBlogClick(blog.id)}
+                className="m-8 mt-8 w-[350px] h-[550px] bg-white rounded-lg shadow-lg overflow-hidden hover:shadow-xl transition-all transform hover:scale-110 active:scale-95"
+              >
                 <img
                   src={blog.image ? blog.image : "/assets/NoPic.jpg"}
                   alt={blog.title}
                   className="object-cover mx-auto m-4 w-[320px] h-[240px]"
                 />
                 <div className="p-4">
-                  <p className="text-xs text-[#6e6cdf] font-semibold">
+                  <p className="text-xs text-[#6e6cdf] font-bold">
                     {blog.category}
                   </p>
                   <div className="relative mt-4">
@@ -163,15 +257,15 @@ export default function MainPage() {
                   </div>
 
                   <p
-                    className="text-gray-500 text-sm mt-4 line-clamp-3 overflow-hidden"
+                    className="text-gray-500 text-sm mt-4 line-clamp-3 overflow-hidden break-words break-all"
                     title={blog.content}
                   >
                     {blog.content}
                   </p>
                   <div className="flex items-center mt-8 pt-3">
-                    {blog.authorPic ? (
+                    {blog.authorpic ? (
                       <img
-                        src={blog.authorPic}
+                        src={blog.authorpic}
                         alt={blog.author}
                         className="w-8 h-8 rounded-full object-cover mr-2"
                       />
@@ -185,18 +279,33 @@ export default function MainPage() {
                       <span className="text-sm font-medium text-gray-700">
                         {blog.author}
                       </span>
+
                       <span className="text-xs text-gray-400">
-                        {format(new Date(blog.date), "dd MMM yyyy")}
+                        {blog.createdat && isValid(parseISO(blog.createdat))
+                          ? format(parseISO(blog.createdat), "dd MMM yyyy")
+                          : "Unknown date"}
                       </span>
                     </div>
                   </div>
                 </div>
               </div>
-            </Link>
-          ))
+            );
+          })
         )}
       </div>
-
+      {hasMore && (
+        <div className="flex justify-center mt-6 mb-12">
+          <button
+            type="button"
+            onClick={handleLoadMore}
+            disabled={loading}
+            className="px-6 py-2 font-bold bg-[#f9f5ff] text-[#6840c6] hover:bg-gray-200 rounded-lg transition cursor-pointer flex items-center gap-2"
+          >
+            <img src="/assets/Icon.svg" alt="icon" className="w-3 h-3" />
+            {loading ? "Loading..." : "Load More"}
+          </button>
+        </div>
+      )}
       <AddButton onClick={() => setIsAddOpen(true)} />
       <AddForm
         isOpen={isAddOpen}
@@ -209,23 +318,7 @@ export default function MainPage() {
         <ProfileForm
           user={loggedInUser}
           onClose={() => setIsProfileOpen(false)}
-          onSave={(updatedUser, oldEmail) => {
-            setUser(updatedUser);
-
-            const updatedBlogs = blogs.map((b) =>
-              b.authorEmail === oldEmail
-                ? {
-                    ...b,
-                    author: updatedUser.fullName,
-                    authorPic: updatedUser.profilePic,
-                    authorEmail: updatedUser.email,
-                  }
-                : b
-            );
-
-            updateBlogs(updatedBlogs);
-            setIsProfileOpen(false);
-          }}
+          onSave={handleProfileSave}
         />
       )}
     </div>
