@@ -10,11 +10,14 @@ export default function GoogleLoginButton() {
     flow: "auth-code",
     onSuccess: async (codeResponse) => {
       try {
-        const res = await fetch("http://localhost:5000/api/auth/google-login", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ code: codeResponse.code }),
-        });
+        const res = await fetch(
+          `${import.meta.env.VITE_API_URL}/auth/google-login`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ code: codeResponse.code }),
+          }
+        );
 
         const result = await res.json();
 

@@ -1,51 +1,19 @@
-import { useState } from "react";
-import { useUserStore } from "../store/userStore";
 import GoogleLoginButton from "./GoogleLoginButton";
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
+import { useLoginform } from "../Hooks/useLoginForm";
 
 export default function LoginForm() {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [errors, setErrors] = useState({});
-  const [showPassword, setShowPassword] = useState(false);
-  const setUser = useUserStore((state) => state.setUser);
-
-  const navigate = useNavigate();
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-
-    const newErrors = {};
-    if (email.trim() === "") newErrors.email = "Email is required";
-    if (password.trim() === "") newErrors.password = "Password is required";
-    setErrors(newErrors);
-
-    if (Object.keys(newErrors).length > 0) return;
-
-    try {
-      const res = await fetch("http://localhost:5000/api/auth/login", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ email, password }),
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        setErrors({ password: data.message || "Email or Password is invalid" });
-        return;
-      }
-      localStorage.setItem("token", data.token);
-      setUser(data.user);
-      navigate("/mainpage");
-    } catch (err) {
-      console.error("Login error:", err);
-      setErrors({ password: "Something went wrong. Try again later." });
-    }
-  };
-
+  
+const {
+  email,
+  password,
+  setEmail,
+  setPassword,
+  showPassword,
+  setShowPassword,
+  errors,
+  handleSubmit,
+} = useLoginform();
 
   return (
     <div className="max-w-md w-full">

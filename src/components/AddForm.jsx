@@ -1,81 +1,21 @@
-import { useState, useEffect, useRef } from "react";
 import { FaImage } from "react-icons/fa";
-import { useUserStore } from "../store/userStore";
+import { useAddForm } from "../Hooks/useAddForm";
 
-export default function AddForm({ isOpen, onClose, onAdd }) {
-  const [title, setTitle] = useState("");
-  const [category, setCategory] = useState("");
-  const [content, setContent] = useState("");
-  const [image, setImage] = useState(null);
-  const { user } = useUserStore();
-  
+export default function AddForm(props) {
+  const { isOpen, onClose, onAdd } = props;
 
-  const formRef = useRef(null);
-
-  useEffect(() => {
-    const handleEsc = (e) => {
-      if (e.key === "Escape") onClose();
-    };
-    window.addEventListener("keydown", handleEsc);
-    return () => window.removeEventListener("keydown", handleEsc);
-  }, [onClose]);
-
-  useEffect(() => {
-    const handleClickOutside = (e) => {
-      if (formRef.current && !formRef.current.contains(e.target)) {
-        onClose();
-      }
-    };
-    if (isOpen) {
-      document.addEventListener("mousedown", handleClickOutside);
-    }
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
-  }, [isOpen, onClose]);
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!user) return alert("No user logged in!");
-    if (!title.trim() || !category.trim() || !content.trim()) return;
-
-
-    try {
-      
-      const blogData = {
-        title,
-        category,
-        content,
-        image,
-        authorName: user.name,
-        authorEmail: user.email,
-        authorpic: user.profilepic || "",
-      };
-
-      await onAdd(blogData);
-
-      setTitle("");
-      setCategory("");
-      setContent("");
-      setImage(null);
-
-      onClose();
-    } catch (error) {
-      console.error("Failed to post blog:", error);
-    }
-
-  };
-
-  const handleImageChange = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setImage(reader.result);
-      };
-      reader.readAsDataURL(file);
-    }
-  };
+  const {
+    formRef,
+    title,
+    setTitle,
+    category,
+    setCategory,
+    content,
+    setContent,
+    image,
+    handleSubmit,
+    handleImageChange,
+  } = useAddForm({ isOpen, onClose, onAdd });
 
   if (!isOpen) return null;
 
@@ -88,7 +28,7 @@ export default function AddForm({ isOpen, onClose, onAdd }) {
         <h2 className="text-xl font-bold mb-4 text-center text-black cursor-default">
           New Post
         </h2>
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form className="space-y-4">
           <input
             type="text"
             value={title}
@@ -152,10 +92,18 @@ export default function AddForm({ isOpen, onClose, onAdd }) {
             </div>
           </div>
 
-          <div className="flex justify-center mt-6">
+          <div className="flex justify-between mt-6 gap-4">
             <button
-              type="submit"
-              className="w-full flex items-center justify-center bg-[#6e6cdf] text-white py-2 rounded-xl cursor-pointer text-center hover:bg-[#5b59d1] transition"
+              type="button"
+              onClick={(e) => handleSubmit(e, true)}
+              className="w-1/2 flex items-center justify-center bg-[#aaa7e6] text-white py-2 rounded-xl cursor-pointer text-center hover:bg-[#8d8ab9] transition"
+            >
+              Save as Draft
+            </button>
+            <button
+              type="button"
+              onClick={(e) => handleSubmit(e, false)}
+              className="w-1/2 flex items-center justify-center bg-[#6e6cdf] text-white py-2 rounded-xl cursor-pointer text-center hover:bg-[#5b59d1] transition"
             >
               Post
             </button>

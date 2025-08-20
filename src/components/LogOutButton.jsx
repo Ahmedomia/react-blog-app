@@ -1,15 +1,8 @@
-import { useNavigate } from "react-router-dom";
 import { FiLogOut } from "react-icons/fi";
-import { useUserStore } from "../store/userStore";
+import { useLogOutButton } from "../Hooks/useLogOutButton";
 
 export default function LogOutButton() {
-  const navigate = useNavigate();
-  const clearUser = useUserStore((state) => state.clearUser);
-
-  const handleLogout = () => {
-    clearUser();
-    navigate("/");
-  };
+  const { handleLogout } = useLogOutButton();
 
   return (
     <button

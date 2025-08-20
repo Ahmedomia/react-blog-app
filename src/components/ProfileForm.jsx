@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { FaUserCircle, FaPen, FaArrowLeft } from "react-icons/fa";
+import { FaPen, FaArrowLeft } from "react-icons/fa";
 import LogOutButton from "../components/LogOutButton";
 import { useUserStore } from "../store/userStore";
 import { useBlogStore } from "../store/blogStore";
@@ -61,7 +61,7 @@ export default function ProfileForm({ onClose, onSave }) {
       };
 
       const res = await fetch(
-        `http://localhost:5000/api/auth/users/${globalUser.id}`,
+        `${import.meta.env.VITE_API_URL}/auth/users/${globalUser.id}`,
         {
           method: "PUT",
           headers: {
@@ -115,7 +115,11 @@ export default function ProfileForm({ onClose, onSave }) {
                 className="w-full h-full object-cover"
               />
             ) : (
-              <FaUserCircle className="w-full h-full text-gray-400" />
+              <div className="w-full h-full rounded-full bg-gray-300 flex items-center justify-center">
+                <p className="text-gray-500 text-4xl font-bold cursor-default">
+                  {name.charAt(0) || "?"}
+                </p>
+              </div>
             )}
 
             {isEditing && (

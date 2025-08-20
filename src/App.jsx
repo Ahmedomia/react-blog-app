@@ -2,9 +2,10 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import LoginPage from "./pages/LoginPage";
 import SignupPage from "./pages/SignUpPage";
 import MainPage from "./pages/MainPage";
-import ForgotPassword from "./pages/ForgetPassword" 
+import ForgotPassword from "./pages/ForgetPassword";
 import BlogDetailsPage from "./pages/BlogDetailsPage";
-
+import SharedBlogPage from "./pages/SharedBlogPage";
+import { ProtectedRoute } from "./components/ProtectedRoute";
 
 function App() {
   return (
@@ -13,8 +14,23 @@ function App() {
         <Route path="/" element={<LoginPage />} />
         <Route path="/signup" element={<SignupPage />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
-        <Route path="/blog/:id" element={<BlogDetailsPage />} />
-        <Route path="/mainpage" element={<MainPage />} />
+        <Route path="/share/:shareid" element={<SharedBlogPage />} />
+        <Route
+          path="/blog/:id"
+          element={
+            <ProtectedRoute>
+              <BlogDetailsPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/mainpage"
+          element={
+            <ProtectedRoute>
+              <MainPage />
+            </ProtectedRoute>
+          }
+        />
       </Routes>
     </BrowserRouter>
   );

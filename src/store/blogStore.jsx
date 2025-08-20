@@ -28,6 +28,13 @@ export const useBlogStore = create((set) => ({
       return { blogs: updatedBlogs };
     }),
 
+  updateBlogInStore: (updatedBlog) =>
+    set((state) => ({
+      blogs: state.blogs.map((b) =>
+        b.id === updatedBlog.id ? updatedBlog : b
+      ),
+    })),
+
   setPage: (updater) =>
     set((state) => ({
       page: typeof updater === "function" ? updater(state.page) : updater,
