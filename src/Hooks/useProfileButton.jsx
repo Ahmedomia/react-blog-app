@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useUserStore } from "../store/userStore";
-import api from "../api"; // Import your custom Axios instance
+import api from "../api";
 
 export function useProfileButton() {
   const [isOpen, setIsOpen] = useState(false);
@@ -13,7 +13,6 @@ export function useProfileButton() {
     try {
       const updatedUser = { ...user, ...updatedFields };
 
-      // Use Axios instance with auto headers
       const response = await api.put(`/users/${user.id}`, updatedUser);
 
       const updatedUserData = response.data;
