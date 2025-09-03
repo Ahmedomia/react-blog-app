@@ -8,6 +8,7 @@ export function useLoginform() {
   const [showPassword, setShowPassword] = useState(false);
   const [errors, setErrors] = useState({});
   const setUser = useUserStore((state) => state.setUser);
+  const setAccessToken = useUserStore((state) => state.setAccessToken);
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
@@ -26,6 +27,7 @@ export function useLoginform() {
         headers: {
           "Content-Type": "application/json",
         },
+        credentials: "include",
         body: JSON.stringify({ email, password }),
       });
 
@@ -37,7 +39,7 @@ export function useLoginform() {
         });
         return;
       }
-      localStorage.setItem("token", data.token);
+      setAccessToken(data.accessToken);
       setUser(data.user);
       navigate("/mainpage");
     } catch (err) {

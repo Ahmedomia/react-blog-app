@@ -5,6 +5,7 @@ import MainPage from "./pages/MainPage";
 import ForgotPassword from "./pages/ForgetPassword";
 import BlogDetailsPage from "./pages/BlogDetailsPage";
 import SharedBlogPage from "./pages/SharedBlogPage";
+import ProfilePage from "./pages/profilePage";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 
 function App() {
@@ -28,6 +29,14 @@ function App() {
           element={
             <ProtectedRoute>
               <MainPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/profilepage"
+          element={
+            <ProtectedRoute>
+              <ProfilePage />
             </ProtectedRoute>
           }
         />

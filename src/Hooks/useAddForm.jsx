@@ -33,7 +33,6 @@ export function useAddForm({ isOpen, onClose, onAdd }) {
   const handleSubmit = async (e, isDraft = false) => {
     e.preventDefault();
     if (!user) return alert("No user logged in!");
-    console.log(title);
     if (!title.trim() || !category.trim() || !content.trim()) return;
 
     try {
@@ -47,7 +46,6 @@ export function useAddForm({ isOpen, onClose, onAdd }) {
         authorpic: user.profilepic || "",
         isdraft: isDraft,
       };
-      console.log(" blogData:", blogData);
 
       await onAdd(blogData);
 

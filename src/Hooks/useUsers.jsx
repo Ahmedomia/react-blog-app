@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import axios from "axios";
+import api from "../api";
 
 export function useUsers() {
   const [userMap, setUserMap] = useState({});
@@ -7,8 +7,7 @@ export function useUsers() {
   useEffect(() => {
     const fetchUsers = async () => {
       try {
-        const res = await axios.get(`${import.meta.env.VITE_API_URL}/users`);
-
+        const res = await api.get("/users");
         const users = Array.isArray(res.data) ? res.data : res.data.users;
 
         if (!Array.isArray(users)) {
@@ -32,5 +31,6 @@ export function useUsers() {
 
     fetchUsers();
   }, []);
+
   return { userMap };
 }

@@ -1,5 +1,5 @@
 import { useParams } from "react-router-dom";
-import { FaArrowLeft } from "react-icons/fa";
+import BackButton from "../components/BackButton";
 import { format, parseISO, isValid } from "date-fns";
 import ProfileButton from "../components/ProfileButton";
 import { SyncLoader } from "react-spinners";
@@ -7,6 +7,12 @@ import CommentsSection from "../components/CommentsSection";
 import { useComments } from "../Hooks/useComments";
 import { useBlogDetails } from "../Hooks/useBlogDetails";
 import { useUsers } from "../Hooks/useUsers";
+import { usePublish } from "../Hooks/usePublish";
+import { useHandleChange } from "../Hooks/useHandleChange";
+import { useHandlesave } from "../Hooks/useHandleSave";
+import { useHandleDelete } from "../Hooks/useHandleDelete";
+import { useHandleShare } from "../Hooks/useHandleShare";
+import { useHandleImageChange } from "../Hooks/useHandleImageChange";
 
 export default function BlogDetailsPage() {
   const { id } = useParams();
@@ -23,23 +29,23 @@ export default function BlogDetailsPage() {
   } = useComments(id);
   const {
     blog,
+    setBlog,
     loading,
     editedBlog,
+    setIsEditing,
+    setEditedBlog,
     isEditing,
     fileInputRef,
-    notification,
     isAuthor,
-    handlePublish,
-    handleChange,
     handleEditClick,
-    handleSave,
-    handleDelete,
-    handleBack,
     handleImageClick,
-    handleShare,
-    handleImageChange,
   } = useBlogDetails(id);
-
+  const { handlePublish } = usePublish();
+  const { handleChange } = useHandleChange(setEditedBlog);
+  const { handleDelete } = useHandleDelete();
+  const { handleSave } = useHandlesave();
+  const { notification, handleShare } = useHandleShare(id);
+  const { handleImageChange } = useHandleImageChange(setEditedBlog);
   const { userMap } = useUsers();
 
   if (loading) {
@@ -62,15 +68,7 @@ export default function BlogDetailsPage() {
         </div>
       )}
       <div className="relative max-w-2xl mx-auto px-4 py-8">
-        <button
-          onClick={handleBack}
-          className="fixed top-4 left-4 z-50
-    bg-[#422f7d] p-2 rounded-full shadow-lg
-    hover:bg-[#6840c6] transition-all transform hover:scale-110 active:scale-95
-    flex items-center justify-center text-white"
-        >
-          <FaArrowLeft className="text-lg" />
-        </button>
+        <BackButton />
         <ProfileButton />
 
         <div className="space-y-4">
@@ -131,7 +129,7 @@ export default function BlogDetailsPage() {
                 </button>
 
                 <button
-                  onClick={handleDelete}
+                  onClick={() => handleDelete(blog)}
                   className="group relative w-[24px] h-[24px]"
                 >
                   <img
@@ -221,7 +219,9 @@ export default function BlogDetailsPage() {
               />
               <div className="flex gap-4">
                 <button
-                  onClick={handleSave}
+                  onClick={() =>
+                    handleSave(blog, editedBlog, setBlog, setIsEditing)
+                  }
                   className="w-50 flex items-center justify-center bg-[#422f7d] text-white py-2 px-4 rounded-xl mt-2 cursor-pointer text-center hover:bg-[#6840c6] transition"
                 >
                   Save
@@ -236,7 +236,12 @@ export default function BlogDetailsPage() {
               <div className="flex justify-end">
                 {blog?.isdraft && isAuthor && !isEditing && (
                   <button
-                    onClick={handlePublish}
+                    onClick={async () => {
+                      const updated = await handlePublish(blog);
+                      if (updated) {
+                        setBlog(updated);
+                      }
+                    }}
                     className="mt-2 px-4 py-2 bg-[#6840c6] text-white rounded hover:bg-[#422f7d]"
                   >
                     Publish

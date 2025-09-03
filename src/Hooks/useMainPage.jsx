@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useUserStore } from "../store/userStore";
 import { useBlogStore } from "../store/blogStore";
-import axios from "axios";
+import api from "../api";
 
 export function useMainPage() {
   const [isAddOpen, setIsAddOpen] = useState(false);
@@ -13,7 +13,7 @@ export function useMainPage() {
 
   const navigate = useNavigate();
 
-  const { user: loggedInUser, setUser } = useUserStore();
+  const { user: loggedInUser, setUser, accessToken } = useUserStore();
   const {
     blogs,
     setBlogs,
@@ -25,7 +25,6 @@ export function useMainPage() {
     setLoading,
   } = useBlogStore();
 
-  const token = localStorage.getItem("token");
   const [categoryFilter, setCategoryFilter] = useState("all");
   const BLOGS_PER_PAGE = 3;
 
@@ -61,26 +60,18 @@ export function useMainPage() {
 
       try {
         let myDrafts = [];
+
         if (page === 0 && loggedInUser) {
-          const myRes = await axios.get(
-            `${import.meta.env.VITE_API_URL}/blogs/mine`,
-            {
-              headers: { Authorization: `Bearer ${token}` },
-            }
-          );
+          const myRes = await api.get("/blogs/mine");
           myDrafts = myRes.data.filter((blog) => blog.isdraft);
         }
 
-        const publishedRes = await axios.get(
-          `${import.meta.env.VITE_API_URL}/blogs`,
-          {
-            headers: { Authorization: `Bearer ${token}` },
-            params: {
-              limit: BLOGS_PER_PAGE,
-              offset: page * BLOGS_PER_PAGE,
-            },
-          }
-        );
+        const publishedRes = await api.get("/blogs", {
+          params: {
+            limit: BLOGS_PER_PAGE,
+            offset: page * BLOGS_PER_PAGE,
+          },
+        });
 
         const publishedBlogs = publishedRes.data.filter(
           (b) => !(loggedInUser && b.authorid === loggedInUser.id && b.isdraft)
@@ -119,7 +110,7 @@ export function useMainPage() {
     };
 
     fetchBlogs();
-  }, [page, token, loggedInUser]);
+  }, [page, accessToken, loggedInUser]);
 
   const handleLoadMore = () => {
     setPage((prev) => prev + 1);
@@ -142,13 +133,7 @@ export function useMainPage() {
 
   const handleAddBlog = async (newBlog) => {
     try {
-      const res = await axios.post(
-        `${import.meta.env.VITE_API_URL}/blogs`,
-        newBlog,
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
+      const res = await api.post(`/blogs`, newBlog);
       setBlogs([res.data, ...blogs]);
       setSearchTerm("");
       setCategoryFilter("all");
@@ -194,7 +179,7 @@ export function useMainPage() {
       setBlogs((prevBlogs) =>
         prevBlogs.map((blog) =>
           blog.author === updatedUser.username
-            ? { ...blog, authorpic: updatedUser.profilePic }
+            ? { ...blog, authorpic: updatedUser.profilepic }
             : blog
         )
       );

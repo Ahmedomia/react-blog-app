@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useUserStore } from "../store/userStore";
+import api from "../api";
 
 export function useComments(id, shareid) {
   const [comments, setComments] = useState([]);
@@ -26,8 +27,8 @@ export function useComments(id, shareid) {
           return;
         }
 
-        const res = await fetch(url);
-        const data = await res.json();
+        const res = await api.get(url);
+        const data = res.data;
 
         if (!Array.isArray(data)) {
           console.error("Invalid response for comments:", data);
@@ -49,23 +50,20 @@ export function useComments(id, shareid) {
     if (newComment.trim() === "") return;
 
     try {
-      await fetch(`${import.meta.env.VITE_API_URL}/comments/${id}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          text: newComment.trim(),
-          userId: loggedInUser?.id,
-        }),
+      await api.post(`/comments/${id}`, {
+        text: newComment.trim(),
+        userId: loggedInUser?.id,
       });
 
       setNewComment("");
-      const res = await fetch(`${import.meta.env.VITE_API_URL}/comments/${id}`);
-      const updated = await res.json();
+      const res = await api.get(`/comments/${id}`);
+      const updated = res.data;
       setComments(updated);
     } catch (err) {
       console.error("Failed to post comment:", err);
     }
   };
+
   const handleReactSuccess = (commentId, userId, username, reaction) => {
     setComments((prev) =>
       prev.map((c) =>
@@ -95,7 +93,6 @@ export function useComments(id, shareid) {
       )
     );
   };
-
 
   return {
     comments,

@@ -13,6 +13,7 @@ export function useSignupForm() {
 
   const navigate = useNavigate();
   const setUser = useUserStore((state) => state.setUser);
+  const setAccessToken = useUserStore((state) => state.setAccessToken);
 
   const handleInitialSubmit = async (e) => {
     e.preventDefault();
@@ -37,6 +38,7 @@ export function useSignupForm() {
           headers: {
             "Content-Type": "application/json",
           },
+          credentials: "include",
           body: JSON.stringify({ name, email, password, profilepic: "" }),
         }
       );
@@ -62,14 +64,15 @@ export function useSignupForm() {
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({ name, email, password, code }),
+          credentials: "include",
+          body: JSON.stringify({ email, code }),
         }
       );
 
       const data = await res.json();
       if (!res.ok) throw new Error(data.message);
 
-      localStorage.setItem("token", data.token);
+      setAccessToken(data.accessToken);
       setUser(data.user);
       navigate("/mainpage");
     } catch (err) {

@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
+import api from "../api";
 
-export function useSharedBlogPage(){
-    
+export function useSharedBlogPage() {
   const { shareid } = useParams();
   const [blog, setBlog] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -10,35 +10,25 @@ export function useSharedBlogPage(){
 
   useEffect(() => {
     const fetchBlog = async () => {
+      setLoading(true);
+      setError("");
       try {
-        const res = await fetch(
-          `${import.meta.env.VITE_API_URL}/blogs/share/${shareid}`,
-          {
-            headers: { Accept: "application/json" },
-          }
-        );
-
-        if (!res.ok) {
-          if (res.status === 404) setError("Blog not found.");
-          else setError("Failed to fetch blog.");
-          setBlog(null);
-          return;
-        }
-
-        const data = await res.json();
-        console.log(data)
-        setBlog(data);
+        const res = await api.get(`/blogs/share/${shareid}`);
+        setBlog(res.data);
       } catch (err) {
-        console.error("Error fetching shared blog:", err);
-        setError("Failed to fetch blog.");
+        if (err.response?.status === 404) {
+          setError("Blog not found.");
+        } else {
+          setError("Failed to fetch blog.");
+        }
+        setBlog(null);
       } finally {
         setLoading(false);
       }
     };
 
-    fetchBlog();
+    if (shareid) fetchBlog();
   }, [shareid]);
 
-
-  return { blog, loading, error }; 
+  return { blog, loading, error };
 }
