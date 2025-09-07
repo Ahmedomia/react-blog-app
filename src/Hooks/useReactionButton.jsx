@@ -11,14 +11,16 @@ export function useReactionButton({
   const timerRef = useRef(null);
 
   const handleReaction = async (reaction) => {
+    const prevReaction = currentReaction;
+    onReactSuccess(commentId, currentUser.id, currentUser.name, reaction);
     try {
       await api.post(`/comments/${commentId}/react`, {
         userId: currentUser.id,
         reaction,
       });
-      onReactSuccess(commentId, currentUser.id, currentUser.name, reaction);
     } catch (err) {
       console.error("Reaction error:", err);
+      onReactSuccess(commentId, currentUser.id, currentUser.name, prevReaction);
     }
   };
 

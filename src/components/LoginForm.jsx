@@ -1,19 +1,32 @@
+import { useState } from "react";
 import GoogleLoginButton from "./GoogleLoginButton";
 import { Link } from "react-router-dom";
 import { useLoginform } from "../Hooks/useLoginForm";
 
 export default function LoginForm() {
-  
-const {
-  email,
-  password,
-  setEmail,
-  setPassword,
-  showPassword,
-  setShowPassword,
-  errors,
-  handleSubmit,
-} = useLoginform();
+  const {
+    email,
+    password,
+    setEmail,
+    setPassword,
+    showPassword,
+    setShowPassword,
+    errors,
+    handleSubmit,
+  } = useLoginform();
+
+  const [loading, setLoading] = useState(false);
+
+  const onSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+
+    try {
+      await handleSubmit(e); // Assuming this already handles login
+    } finally {
+      setLoading(false); // Ensure button re-enables even on error
+    }
+  };
 
   return (
     <div className="max-w-md w-full">
@@ -26,7 +39,7 @@ const {
       <p className="text-left md:text-center text-gray-400 mb-14 cursor-default">
         Please login your account
       </p>
-      <form onSubmit={handleSubmit} className="space-y-4">
+      <form onSubmit={onSubmit} className="space-y-4">
         <div>
           <label className="block mb-2 font-bold text-black/80">Email</label>
           <input
@@ -81,9 +94,14 @@ const {
 
         <button
           type="submit"
-          className="w-full flex items-center justify-center bg-[#6e6cdf] text-white py-2 rounded-xl mt-8 cursor-pointer text-center hover:bg-[#5b59d1] transition"
+          disabled={loading}
+          className={`w-full flex items-center justify-center bg-[#6e6cdf] text-white py-2 rounded-xl mt-8 text-center transition ${
+            loading
+              ? "opacity-50 cursor-not-allowed"
+              : "hover:bg-[#5b59d1] cursor-pointer"
+          }`}
         >
-          Sign in
+          {loading ? "Signing in..." : "Sign in"}
         </button>
 
         <div className="text-black/20 text-[16px] text-center cursor-default">

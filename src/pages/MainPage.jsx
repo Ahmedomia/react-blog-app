@@ -6,7 +6,6 @@ import ProfileForm from "../components/ProfileForm";
 import { format, parseISO, isValid } from "date-fns";
 import { SyncLoader } from "react-spinners";
 
-
 export default function MainPage() {
   const {
     isAddOpen,

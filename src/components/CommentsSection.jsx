@@ -18,6 +18,7 @@ export default function CommentsSection({
     commentId: null,
     filter: "all",
   });
+  const [posting, setPosting] = useState(false);
   const popupRef = useRef(null);
 
   useEffect(() => {
@@ -29,6 +30,16 @@ export default function CommentsSection({
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
+
+  const handlePost = async () => {
+    if (!newComment.trim()) return;
+    setPosting(true);
+    try {
+      await PostComment();
+    } finally {
+      setPosting(false);
+    }
+  };
 
   return (
     <div className="mt-10 border-t pt-6 text-gray-400">
@@ -63,11 +74,15 @@ export default function CommentsSection({
               className="w-full px-3 py-2 rounded border focus:outline-none focus:ring-2 focus:ring-[#6840c6]"
             />
             <button
-              onClick={PostComment}
-              disabled={!newComment.trim()}
-              className="mt-2 px-4 py-2 bg-[#6840c6] text-white rounded hover:bg-[#422f7d] disabled:opacity-50"
+              onClick={handlePost}
+              disabled={!newComment.trim() || posting}
+              className={`mt-2 px-4 py-2 text-white rounded transition ${
+                posting
+                  ? "bg-[#6840c6]/50 cursor-not-allowed"
+                  : "bg-[#6840c6] hover:bg-[#422f7d] cursor-pointer"
+              }`}
             >
-              Post
+              {posting ? "Posting..." : "Post"}
             </button>
           </div>
         </div>
@@ -124,6 +139,15 @@ export default function CommentsSection({
                         comment.reactions.find(
                           (r) => r.user_id === currentUser?.id
                         )?.reaction
+                      }
+                      initialCount={
+                        comment.reactions.filter(
+                          (r) =>
+                            r.reaction ===
+                            comment.reactions.find(
+                              (r) => r.user_id === currentUser?.id
+                            )?.reaction
+                        ).length
                       }
                       onReactSuccess={handleReactSuccess}
                     />
