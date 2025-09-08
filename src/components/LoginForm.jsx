@@ -22,9 +22,9 @@ export default function LoginForm() {
     setLoading(true);
 
     try {
-      await handleSubmit(e); // Assuming this already handles login
+      await handleSubmit(e);
     } finally {
-      setLoading(false); // Ensure button re-enables even on error
+      setLoading(false);
     }
   };
 
@@ -95,12 +95,34 @@ export default function LoginForm() {
         <button
           type="submit"
           disabled={loading}
-          className={`w-full flex items-center justify-center bg-[#6e6cdf] text-white py-2 rounded-xl mt-8 text-center transition ${
+          className={`w-full flex items-center justify-center gap-2 bg-[#6e6cdf] text-white py-2 rounded-xl mt-8 text-center transition ${
             loading
               ? "opacity-50 cursor-not-allowed"
               : "hover:bg-[#5b59d1] cursor-pointer"
           }`}
         >
+          {loading && (
+            <svg
+              className="animate-spin h-5 w-5 text-white"
+              xmlns="http://www.w3.org/2000/svg"
+              fill="none"
+              viewBox="0 0 24 24"
+            >
+              <circle
+                className="opacity-25"
+                cx="12"
+                cy="12"
+                r="10"
+                stroke="currentColor"
+                strokeWidth="4"
+              ></circle>
+              <path
+                className="opacity-75"
+                fill="currentColor"
+                d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
+              ></path>
+            </svg>
+          )}
           {loading ? "Signing in..." : "Sign in"}
         </button>
 
