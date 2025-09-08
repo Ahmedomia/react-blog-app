@@ -1,11 +1,12 @@
-import { format, parseISO, isValid } from "date-fns";
 import { useEffect, useState, useRef } from "react";
+import { useNavigate } from "react-router-dom";
 import { useUserStore } from "../store/userStore";
 import BackButton from "../components/BackButton";
 import { FaCog, FaPen } from "react-icons/fa";
 import LogOutButton from "../components/LogOutButton";
 import { useBlogStore } from "../store/blogStore";
 import { SyncLoader } from "react-spinners";
+import BlogCard from "../components/BlogCard";
 import api from "../api";
 
 export default function ProfilePage({ onClose }) {
@@ -29,6 +30,7 @@ export default function ProfilePage({ onClose }) {
   const backgroundFileRef = useRef(null);
 
   const formRef = useRef(null);
+  const navigate = useNavigate();
 
   const handleImageChange = async (e) => {
     const file = e.target.files[0];
@@ -119,7 +121,7 @@ export default function ProfilePage({ onClose }) {
   useEffect(() => {
     const handleClickOutside = (e) => {
       if (formRef.current && !formRef.current.contains(e.target)) {
-        onClose();
+        onClose?.();
       }
     };
     document.addEventListener("mousedown", handleClickOutside);
@@ -390,79 +392,21 @@ export default function ProfilePage({ onClose }) {
             />
           </div>
         ) : (
-          blogs.map((blog) => {
-            const isdraft = blog.isdraft;
-            return (
-              <div
+          [...blogs]
+            .sort((a, b) => {
+              if (a.isdraft && !b.isdraft) return -1;
+              if (!a.isdraft && b.isdraft) return 1;
+              return 0;
+            })
+            .map((blog) => (
+              <BlogCard
                 key={blog.id}
-                className={`relative m-4 w-[350px] h-[550px] bg-white rounded-lg shadow-lg overflow-hidden hover:shadow-xl transition-all transform hover:scale-105 active:scale-95 cursor-pointer ${
-                  isdraft
-                    ? "border-2 border-dashed border-[#aaa7e6] bg-[#f2f0fc]"
-                    : ""
-                }`}
-              >
-                <img
-                  src={blog.image || "/assets/NoPic.jpg"}
-                  alt={blog.title}
-                  className="object-cover mx-auto m-4 w-[320px] h-[240px]"
-                />
-                <div className="p-4">
-                  <p className="text-xs text-[#6e6cdf] font-bold">
-                    {blog.category}
-                  </p>
-                  <div className="relative mt-4">
-                    <h2 className="text-lg font-bold text-black/80 pr-8">
-                      {blog.title}
-                    </h2>
-                    <img
-                      src="/assets/Icon wrap.svg"
-                      alt="Icon wrap"
-                      className="w-[24px] h-[28px] absolute top-0 right-2"
-                    />
-                  </div>
-                  {isdraft && (
-                    <span className="absolute top-2 right-2 px-2 py-1 text-xs font-bold bg-[#aaa7e6] text-white rounded">
-                      Draft
-                    </span>
-                  )}
-
-                  <p
-                    className="text-gray-500 text-sm mt-4 line-clamp-3 overflow-hidden break-words break-all"
-                    title={blog.content}
-                  >
-                    {blog.content}
-                  </p>
-
-                  <div className="flex items-center mt-8 pt-3">
-                    {profilepic ? (
-                      <img
-                        src={profilepic}
-                        alt={name}
-                        className="w-8 h-8 rounded-full object-cover mr-2"
-                      />
-                    ) : (
-                      <div className="w-8 h-8 rounded-full bg-gray-300 flex items-center justify-center mr-2">
-                        <p className="text-gray-500 font-bold cursor-default">
-                          {name?.charAt(0) || "?"}
-                        </p>
-                      </div>
-                    )}
-
-                    <div className="flex flex-col">
-                      <span className="text-sm font-medium text-gray-700">
-                        {globalUser?.name}
-                      </span>
-                      <span className="text-xs text-gray-400">
-                        {blog.createdat && isValid(parseISO(blog.createdat))
-                          ? format(parseISO(blog.createdat), "dd MMM yyyy")
-                          : "Unknown date"}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            );
-          })
+                blog={blog}
+                onClick={() => navigate(`/blog/${blog.id}`)}
+                authorPic={profilepic}
+                authorName={globalUser?.name}
+              />
+            ))
         )}
       </div>
     </div>

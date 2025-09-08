@@ -37,6 +37,7 @@ export function useComments(id, shareid) {
         }
 
         setComments(data);
+        console.log(data);
       } catch (err) {
         console.error("Error fetching comments:", err);
         setComments([]);
