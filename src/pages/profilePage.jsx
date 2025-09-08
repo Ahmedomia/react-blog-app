@@ -6,7 +6,7 @@ import { FaCog, FaPen } from "react-icons/fa";
 import LogOutButton from "../components/LogOutButton";
 import { useBlogStore } from "../store/blogStore";
 import { SyncLoader } from "react-spinners";
-import api from "../api"; // <-- Import your custom Axios instance
+import api from "../api";
 
 export default function ProfilePage({ onClose }) {
   const [blogs, setBlogs] = useState([]);
@@ -30,7 +30,6 @@ export default function ProfilePage({ onClose }) {
 
   const formRef = useRef(null);
 
-  // Handle profile picture change
   const handleImageChange = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -61,7 +60,6 @@ export default function ProfilePage({ onClose }) {
     e.target.value = null;
   };
 
-  // Handle background picture change
   const handleBackGroundChange = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -92,7 +90,6 @@ export default function ProfilePage({ onClose }) {
     e.target.value = null;
   };
 
-  // Handle main profile save
   const handleSave = async () => {
     if (!globalUser?.id) {
       console.error("User ID is missing. Cannot update.");
@@ -150,7 +147,6 @@ export default function ProfilePage({ onClose }) {
     }
   }, [globalUser]);
 
-  // Handle bio save
   const handleSaveBio = async () => {
     if (!globalUser?.id) {
       console.error("User ID is missing. Cannot update bio.");
@@ -175,7 +171,6 @@ export default function ProfilePage({ onClose }) {
     }
   };
 
-  // Fetch profile and user's blogs
   useEffect(() => {
     async function fetchProfile() {
       if (!globalUser?.id) return;
@@ -222,7 +217,7 @@ export default function ProfilePage({ onClose }) {
       <BackButton />
       <button
         onClick={() => setIsOpen(true)}
-        className="fixed top-4 right-16 z-50
+        className="fixed top-4 right-16 z-50 cursor-pointer
     bg-[#422f7d] p-2 rounded-full shadow-lg
     hover:bg-[#6840c6] transition-all transform hover:scale-110 active:scale-95
     flex items-center justify-center text-white"

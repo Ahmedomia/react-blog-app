@@ -1,12 +1,13 @@
 import { FiLogOut } from "react-icons/fi";
 import { useLogOutButton } from "../Hooks/useLogOutButton";
 
-export default function LogOutButton() {
+export default function LogOutButton({ className = "", size = 20, children }) {
   const { handleLogout } = useLogOutButton();
 
   return (
-    <button onClick={handleLogout}>
-      <FiLogOut size={20} />
+    <button className={`cursor-pointer ${className}`} onClick={handleLogout}>
+      <FiLogOut size={size} />
+      {children && <span>{children}</span>}
     </button>
   );
 }

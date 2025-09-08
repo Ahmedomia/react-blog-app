@@ -78,10 +78,12 @@ export default function ProfileForm({ onClose }) {
             >
               Go to Profile Page
             </button>
-            <div className="w-full flex items-center justify-center text-red-600 border border-gray-400 py-2 rounded-xl cursor-pointer text-center hover:bg-gray-400 transition gap-2">
-              <LogOutButton />
-              Log Out
-            </div>
+            <LogOutButton
+              className="w-full flex items-center justify-center text-red-600 border border-gray-400 py-2 rounded-xl text-center hover:bg-gray-400 transition gap-2"
+              size={20}
+            >
+              Log out
+            </LogOutButton>
           </>
         </div>
       </div>
