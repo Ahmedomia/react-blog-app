@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
-import api from "../api";
+import axios from "axios";
 
 export function useSharedBlogPage() {
   const { shareid } = useParams();
@@ -13,7 +13,9 @@ export function useSharedBlogPage() {
       setLoading(true);
       setError("");
       try {
-        const res = await api.get(`/blogs/share/${shareid}`);
+        const res = await axios.get(
+          `${import.meta.env.VITE_API_URL}/blogs/share/${shareid}`
+        );
         setBlog(res.data);
       } catch (err) {
         if (err.response?.status === 404) {

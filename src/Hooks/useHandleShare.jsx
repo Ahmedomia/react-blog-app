@@ -1,5 +1,5 @@
 import { useState } from "react";
-import api from "../api"; // Use your custom Axios instance
+import api from "../api";
 
 export function useHandleShare(id) {
   const [notification, setNotification] = useState("");
@@ -15,7 +15,7 @@ export function useHandleShare(id) {
       }
 
       const shareId = rawShareLink.split("/").pop();
-      const localShareUrl = `${window.location.origin}/share/${shareId}`;
+      const localShareUrl = `${window.location.origin}/#/share/${shareId}`;
 
       await navigator.clipboard.writeText(localShareUrl);
       setNotification("Share link copied!");

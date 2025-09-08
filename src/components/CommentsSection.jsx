@@ -124,8 +124,8 @@ export default function CommentsSection({
         ) : (
           allComments.map((comment, index) => {
             const user = userMap[comment.userId] || loggedInUser;
-            const profilepic = user?.profilepic;
-            const authorName = user?.name || "Anonymous";
+            const profilepic = comment.authorPic || user?.profilepic;
+            const authorName = comment.authorName || user?.name || "Anonymous";
             const authorInitial = authorName.charAt(0).toUpperCase();
 
             return (
