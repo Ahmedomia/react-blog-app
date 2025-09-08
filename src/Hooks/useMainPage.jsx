@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useUserStore } from "../store/userStore";
 import { useBlogStore } from "../store/blogStore";
+import { useDebounce } from "./useDebounce";
 import api from "../api";
 
 export function useMainPage() {
@@ -10,6 +11,7 @@ export function useMainPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [savedScroll, setSavedScroll] = useState(null);
   const [loadingMore, setLoadingMore] = useState(false);
+  const debouncedSearchTerm = useDebounce(searchTerm, 500);
 
   const navigate = useNavigate();
 
@@ -145,9 +147,9 @@ export function useMainPage() {
   const filteredBlogs = (Array.isArray(blogs) ? blogs : []).filter((blog) => {
     const cat = blog.category || "";
     const matchesSearch =
-      blog.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      blog.content?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      cat.toLowerCase().includes(searchTerm.toLowerCase());
+      blog.title?.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
+      blog.content?.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
+      cat.toLowerCase().includes(debouncedSearchTerm.toLowerCase());
 
     const matchesCategory =
       !categoryFilter || categoryFilter === "all" || cat === categoryFilter;
